@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="FitTrack – Smart Fitness Tracking App. Log workouts, track progress, set goals." />
+  <title>FitTrack – Smart Fitness Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    /* ============================================================
+       FITTRACK — GLOBAL STYLES
+       Author : Vincent Habayimana
+       Stack  : HTML + CSS + JavaScript + LocalStorage
+    ============================================================ */
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0f14;
+      --bg-alt:      #131720;
+      --bg-card:     #181c25;
+      --bg-card2:    #1e2330;
+      --border:      rgba(255,255,255,0.07);
+      --border-med:  rgba(255,255,255,0.12);
+      --text:        #d8dce8;
+      --text-muted:  #7b8499;
+      --text-faint:  #3a4056;
+      --heading:     #f0f2f8;
+      --accent:      #3ecf8e;
+      --accent-glow: rgba(62,207,142,0.15);
+      --accent-dim:  rgba(62,207,142,0.08);
+      --accent2:     #60a5fa;
+      --warn:        #fbbf24;
+      --danger:      #f87171;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --radius-xs:   5px;
+      --tr:          0.22s ease;
+      --shadow:      0 4px 24px rgba(0,0,0,0.5);
+      --nav-h:       62px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--text-faint); border-radius: 3px; }
+    ::selection { background: var(--accent); color: #000; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      height: var(--nav-h);
+      background: rgba(13,15,20,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--heading);
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .topbar-nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-btn {
+      padding: 6px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: 'Outfit', sans-serif;
+      transition: all var(--tr);
+    }
+
+    .nav-btn:hover  { color: var(--heading); background: var(--bg-card2); }
+    .nav-btn.active { color: var(--accent); background: var(--accent-dim); border-color: rgba(62,207,142,0.2); }
+
+    /* Mobile hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: transform var(--tr), opacity var(--tr); }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: var(--nav-h); left: 0; right: 0;
+      background: rgba(13,15,20,0.97);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 199;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu .nav-btn { width: 100%; text-align: left; font-size: 0.95rem; padding: 10px 14px; }
+
+    /* ── MAIN WRAPPER ── */
+    .app {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: calc(var(--nav-h) + 28px) 24px 60px;
+    }
+
+    /* ── VIEWS ── */
+    .view { display: none; animation: fadeIn 0.3s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--heading);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title .icon { font-size: 1rem; }
+
+    /* ── METRIC CARDS ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      transition: border-color var(--tr), transform var(--tr);
+    }
+
+    .metric-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .metric-icon { font-size: 1.3rem; margin-bottom: 8px; }
+    .metric-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+    .metric-value { font-size: 1.8rem; font-weight: 700; color: var(--heading); line-height: 1; font-family: 'DM Mono', monospace; }
+    .metric-sub   { font-size: 0.72rem; color: var(--text-faint); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+    /* ── TWO COLUMN GRID ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* ── WEEK DOTS ── */
+    .week-days { display: flex; gap: 8px; margin-bottom: 16px; }
+    .day-dot {
+      flex: 1;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--border);
+      color: var(--text-faint);
+      background: var(--bg-alt);
+      transition: all var(--tr);
+      min-width: 0;
+      gap: 2px;
+    }
+    .day-dot .day-name { font-size: 0.6rem; }
+    .day-dot .day-num  { font-size: 0.7rem; font-family: 'DM Mono', monospace; }
+    .day-dot.has   { background: var(--accent); border-color: var(--accent); color: #000; }
+    .day-dot.today { border-color: var(--accent2); color: var(--accent2); }
+    .day-dot.today.has { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap { margin-bottom: 12px; }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .progress-name   { font-size: 0.85rem; color: var(--text); }
+    .progress-val    { font-size: 0.8rem; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+    .progress-bar    { height: 7px; border-radius: 4px; background: var(--bg-alt); overflow: hidden; }
+    .progress-fill   { height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .progress-fill.warn { background: var(--warn); }
+    .progress-fill.done { background: var(--accent2); }
+    .progress-pct    { font-size: 0.68rem; color: var(--text-faint); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+    /* ── STREAK ── */
+    .streak-box {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-alt);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .streak-num { font-size: 2.8rem; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; line-height: 1; }
+    .streak-label  { font-size: 0.9rem; font-weight: 600; color: var(--heading); }
+    .streak-msg    { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── WORKOUT LOG ITEM ── */
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--tr);
+    }
+    .log-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .log-icon {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .log-info { flex: 1; min-width: 0; }
+    .log-name { font-size: 0.9rem; font-weight: 600; color: var(--heading); margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .log-meta { font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+    .log-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .log-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .icon-btn {
+      width: 30px; height: 30px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--tr);
+    }
+    .icon-btn:hover       { background: var(--bg-alt); color: var(--heading); }
+    .icon-btn.edit:hover  { border-color: var(--accent2); color: var(--accent2); }
+    .icon-btn.del:hover   { border-color: var(--danger); color: var(--danger); background: rgba(248,113,113,0.08); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      font-family: 'DM Mono', monospace;
+    }
+    .badge-green  { background: rgba(62,207,142,0.12);  color: var(--accent); }
+    .badge-blue   { background: rgba(96,165,250,0.12);  color: var(--accent2); }
+    .badge-amber  { background: rgba(251,191,36,0.12);  color: var(--warn); }
+    .badge-red    { background: rgba(248,113,113,0.12); color: var(--danger); }
+
+    /* ── FORM ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+
+    .field label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      color: var(--heading);
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      transition: border-color var(--tr), box-shadow var(--tr);
+      -moz-appearance: textfield;
+    }
+    .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--text-faint); }
+    .field select option { background: var(--bg-card); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-med);
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      transition: all var(--tr);
+    }
+    .btn:hover { background: var(--bg-card2); color: var(--heading); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+    .btn-primary:hover { background: #2db87a; box-shadow: 0 0 28px var(--accent-glow); transform: translateY(-1px); }
+
+    .btn-danger { border-color: rgba(248,113,113,0.3); color: var(--danger); }
+    .btn-danger:hover { background: rgba(248,113,113,0.08); }
+
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      width: fit-content;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 6px 18px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: 'Outfit', sans-serif;
+      transition: all var(--tr);
+    }
+    .tab.active { background: var(--bg-card); color: var(--heading); border-color: var(--border); }
+
+    /* ── SEARCH ── */
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+    .search-input {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: var(--heading);
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      width: 220px;
+      transition: border-color var(--tr);
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-faint); }
+
+    /* ── GOALS ── */
+    .goal-item {
+      padding: 16px;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+      transition: border-color var(--tr);
+    }
+    .goal-item:hover { border-color: var(--border-med); }
+    .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .goal-name  { font-size: 0.9rem; font-weight: 600; color: var(--heading); }
+    .goal-right { display: flex; align-items: center; gap: 8px; }
+    .goal-count { font-size: 0.78rem; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+    .add-goal-form {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      margin-top: 16px;
+    }
+    .add-goal-form h4 { font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-family: 'DM Mono', monospace; }
+    .goal-form-row { display: grid; grid-template-columns: 2fr 1fr 1.2fr auto; gap: 10px; align-items: end; }
+
+    /* ── CHARTS ── */
+    .chart-wrap { position: relative; width: 100%; height: 220px; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease;
+    }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-med);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: var(--shadow);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-title { font-size: 1rem; font-weight: 700; color: var(--heading); margin-bottom: 20px; }
+    .hidden { display: none !important; }
+
+    /* ── STATUS MESSAGE ── */
+    .status-msg { font-size: 0.8rem; text-align: right; min-height: 1.2em; margin-top: 8px; }
+    .status-ok  { color: var(--accent); }
+    .status-err { color: var(--danger); }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-faint);
+      font-size: 0.9rem;
+    }
+    .empty .empty-icon { font-size: 2rem; margin-bottom: 10px; }
+    .empty p { color: var(--text-muted); margin-top: 6px; font-size: 0.82rem; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { margin-bottom: 24px; }
+    .page-tag { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    .page-title { font-size: 1.6rem; font-weight: 700; color: var(--heading); letter-spacing: -0.5px; }
+    .page-sub   { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-faint);
+      font-size: 0.75rem;
+      font-family: 'DM Mono', monospace;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    /* ── TOAST NOTIFICATION ── */
+    .toast {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      font-size: 0.85rem;
+      color: var(--accent);
+      box-shadow: var(--shadow);
+      z-index: 400;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      .topbar-nav { display: none; }
+      .hamburger  { display: flex; }
+      .metrics-grid  { grid-template-columns: 1fr 1fr; }
+      .two-col       { grid-template-columns: 1fr; }
+      .form-grid     { grid-template-columns: 1fr; }
+      .field.full    { grid-column: 1; }
+      .goal-form-row { grid-template-columns: 1fr 1fr; }
+      .goal-form-row button { grid-column: 1/-1; }
+      .app { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    }
+
+    @media (max-width: 480px) {
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .metric-value { font-size: 1.4rem; }
+      .week-days { gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== TOPBAR ===== -->
+  <nav class="topbar">
+    <a class="topbar-logo" href="#">
+      <div class="logo-icon">🏋️</div>
+      FitTrack
+    </a>
+    <div class="topbar-nav" id="topbar-nav">
+      <button class="nav-btn active" onclick="showView('dashboard')">📊 Dashboard</button>
+      <button class="nav-btn" onclick="showView('log')">➕ Log Workout</button>
+      <button class="nav-btn" onclick="showView('history')">📋 History</button>
+      <button class="nav-btn" onclick="showView('goals')">🎯 Goals</button>
+      <button class="nav-btn" onclick="showView('progress')">📈 Progress</button>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobile-menu">
+    <button class="nav-btn" onclick="showView('dashboard');closeMobile()">📊 Dashboard</button>
+    <button class="nav-btn" onclick="showView('log');closeMobile()">➕ Log Workout</button>
+    <button class="nav-btn" onclick="showView('history');closeMobile()">📋 History</button>
+    <button class="nav-btn" onclick="showView('goals');closeMobile()">🎯 Goals</button>
+    <button class="nav-btn" onclick="showView('progress');closeMobile()">📈 Progress</button>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <div class="app">
+
+    <!-- ─── DASHBOARD ─── -->
+    <div class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div class="page-tag">Overview</div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub" id="dash-greeting">Welcome back! Keep pushing.</p>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="metrics-grid" id="dash-metrics"></div>
+
+      <!-- Week + Streak row -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title"><span class="icon">📅</span> This week</div>
+          <div class="week-days" id="week-days"></div>
+          <div id="goal-progress-dash"></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">🔥</span> Streak</div>
+          <div class="streak-box">
+            <div class="streak-num" id="streak-num">0</div>
+            <div>
+              <div class="streak-label">Day streak</div>
+              <div class="streak-msg" id="streak-msg">Start today!</div>
+            </div>
+          </div>
+          <div style="font-size:0.8rem;color:var(--text-muted)" id="last-workout-msg"></div>
+        </div>
+      </div>
+
+      <!-- Recent workouts -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⚡</span> Recent workouts</div>
+        <div id="recent-log"></div>
+      </div>
+    </div>
+
+    <!-- ─── LOG WORKOUT ─── -->
+    <div class="view" id="view-log">
+      <div class="page-header">
+        <div class="page-tag">New Entry</div>
+        <h1 class="page-title" id="log-page-title">Log a Workout</h1>
+        <p class="page-sub">Record your activity and track your progress.</p>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label>Workout type</label>
+            <select id="wtype">
+              <option value="Running">🏃 Running</option>
+              <option value="Cycling">🚴 Cycling</option>
+              <option value="Swimming">🏊 Swimming</option>
+              <option value="Weightlifting">🏋️ Weightlifting</option>
+              <option value="HIIT">⚡ HIIT</option>
+              <option value="Yoga">🧘 Yoga</option>
+              <option value="Walking">🚶 Walking</option>
+              <option value="Football">⚽ Football</option>
+              <option value="Basketball">🏀 Basketball</option>
+              <option value="Other">💪 Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="wdate" />
+          </div>
+          <div class="field">
+            <label>Duration (minutes)</label>
+            <input type="number" id="wduration" min="1" max="600" placeholder="e.g. 45" />
+          </div>
+          <div class="field">
+            <label>Calories burned</label>
+            <input type="number" id="wcals" min="0" max="9999" placeholder="e.g. 350" />
+          </div>
+          <div class="field full">
+            <label>Notes (optional)</label>
+            <input type="text" id="wnotes" placeholder="e.g. Morning run, felt great!" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-danger" onclick="cancelEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveWorkout()">💾 Save Workout</button>
+        </div>
+        <div class="status-msg" id="log-msg"></div>
+      </div>
+    </div>
+
+    <!-- ─── HISTORY ─── -->
+    <div class="view" id="view-history">
+      <div class="page-header">
+        <div class="page-tag">All Entries</div>
+        <h1 class="page-title">Workout History</h1>
+        <p class="page-sub">Browse, search, edit, and delete your logged workouts.</p>
+      </div>
+      <div class="card">
+        <div class="search-wrap">
+          <div class="card-title" style="margin:0">All workouts (<span id="history-count">0</span>)</div>
+          <input
+            class="search-input"
+            type="text"
+            id="search-input"
+            placeholder="🔍  Search workouts..."
+            oninput="renderHistory()"
+          />
+        </div>
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <!-- ─── GOALS ─── -->
+    <div class="view" id="view-goals">
+      <div class="page-header">
+        <div class="page-tag">Targets</div>
+        <h1 class="page-title">Weekly Goals</h1>
+        <p class="page-sub">Set targets and track your weekly progress. Goals reset every Monday.</p>
+      </div>
+      <div class="card">
+        <div id="goals-list"></div>
+        <div class="add-goal-form">
+          <h4>Add a new goal</h4>
+          <div class="goal-form-row">
+            <div class="field">
+              <label>Goal name</label>
+              <input type="text" id="gname" placeholder="e.g. Weekly workouts" />
+            </div>
+            <div class="field">
+              <label>Target</label>
+              <input type="number" id="gtarget" min="1" placeholder="5" />
+            </div>
+            <div class="field">
+              <label>Unit</label>
+              <input type="text" id="gunit" placeholder="workouts" />
+            </div>
+            <button class="btn btn-primary" onclick="addGoal()" style="height:40px;padding:0 18px">+ Add</button>
+          </div>
+          <div style="margin-top:8px;font-size:0.75rem;color:var(--text-faint)">
+            Tip: unit examples — "workouts", "minutes", "calories"
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── PROGRESS ─── -->
+    <div class="view" id="view-progress">
+      <div class="page-header">
+        <div class="page-tag">Analytics</div>
+        <h1 class="page-title">Progress Charts</h1>
+        <p class="page-sub">Visual breakdown of your fitness journey.</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchProgressTab('weekly', this)">This Week</button>
+        <button class="tab" onclick="switchProgressTab('monthly', this)">This Month</button>
+        <button class="tab" onclick="switchProgressTab('all', this)">All Time</button>
+      </div>
+
+      <!-- Duration chart -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⏱</span> <span id="dur-chart-title">Duration per day (minutes)</span></div>
+        <div class="chart-wrap"><canvas id="durChart" role="img" aria-label="Bar chart showing workout duration">Duration data</canvas></div>
+      </div>
+
+      <!-- Calories chart -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🔥</span> <span id="cal-chart-title">Calories burned</span></div>
+        <div class="chart-wrap"><canvas id="calChart" role="img" aria-label="Bar chart showing calories burned">Calories data</canvas></div>
+      </div>
+
+      <!-- Activity breakdown -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title"><span class="icon">🍩</span> Activity breakdown</div>
+          <div class="chart-legend" id="pie-legend"></div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="typeChart" role="img" aria-label="Doughnut chart showing workout types">Type data</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">📊</span> Personal bests</div>
+          <div id="personal-bests"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.app -->
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    FitTrack · Built with HTML, CSS &amp; JavaScript · Data stored locally in your browser · Vincent Habayimana 2025
+  </footer>
+
+  <!-- ===== EDIT MODAL ===== -->
+  <div class="modal-overlay hidden" id="edit-modal">
+    <div class="modal">
+      <div class="modal-title">✏️ Edit workout</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Workout type</label>
+          <select id="e-wtype">
+            <option value="Running">🏃 Running</option>
+            <option value="Cycling">🚴 Cycling</option>
+            <option value="Swimming">🏊 Swimming</option>
+            <option value="Weightlifting">🏋️ Weightlifting</option>
+            <option value="HIIT">⚡ HIIT</option>
+            <option value="Yoga">🧘 Yoga</option>
+            <option value="Walking">🚶 Walking</option>
+            <option value="Football">⚽ Football</option>
+            <option value="Basketball">🏀 Basketball</option>
+            <option value="Other">💪 Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="e-wdate" />
+        </div>
+        <div class="field">
+          <label>Duration (min)</label>
+          <input type="number" id="e-wduration" min="1" />
+        </div>
+        <div class="field">
+          <label>Calories</label>
+          <input type="number" id="e-wcals" min="0" />
+        </div>
+        <div class="field full">
+          <label>Notes</label>
+          <input type="text" id="e-wnotes" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEdit()">💾 Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ===== JAVASCRIPT ===== -->
+  <script>
+  "use strict";
+
+  // ──────────────────────────────────────────────
+  // DATA & CONSTANTS
+  // ──────────────────────────────────────────────
+
+  const ICONS = {
+    Running:'🏃', Cycling:'🚴', Swimming:'🏊', Weightlifting:'🏋️',
+    HIIT:'⚡', Yoga:'🧘', Walking:'🚶', Football:'⚽', Basketball:'🏀', Other:'💪'
+  };
+
+  const BADGE_COLOR = {
+    Running:'green', Cycling:'green', Swimming:'blue', Weightlifting:'amber',
+    HIIT:'red', Yoga:'blue', Walking:'green', Football:'green',
+    Basketball:'amber', Other:'amber'
+  };
+
+  const CHART_COLORS = [
+    '#3ecf8e','#60a5fa','#fbbf24','#f87171',
+    '#a78bfa','#34d399','#fb923c','#38bdf8','#f472b6','#4ade80'
+  ];
+
+  let workouts = JSON.parse(localStorage.getItem('ft_workouts') || '[]');
+  let goals    = JSON.parse(localStorage.getItem('ft_goals')    || '[]');
+  let editId   = null;
+  let progTab  = 'weekly';
+
+  // Chart instances (kept for destroy/recreate)
+  let durChart = null, calChart = null, typeChart = null;
+
+  // ──────────────────────────────────────────────
+  // UTILITIES
+  // ──────────────────────────────────────────────
+
+  function save() {
+    localStorage.setItem('ft_workouts', JSON.stringify(workouts));
+    localStorage.setItem('ft_goals',    JSON.stringify(goals));
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function fmtDate(d) {
+    // e.g. "12 Apr 2025"
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = '✓  ' + msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  // ──────────────────────────────────────────────
+  // NAVIGATION
+  // ──────────────────────────────────────────────
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+
+    // Highlight matching nav buttons in both desktop and mobile nav
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      if (b.textContent.toLowerCase().includes(name.slice(0, 4))) b.classList.add('active');
+    });
+
+    // Render view-specific content
+    if (name === 'dashboard') renderDashboard();
+    if (name === 'history')   renderHistory();
+    if (name === 'goals')     renderGoals();
+    if (name === 'progress')  renderProgress();
+    if (name === 'log') {
+      resetLogForm();
+      document.getElementById('log-page-title').textContent = 'Log a Workout';
+    }
+  }
+
+  // Mobile hamburger
+  document.getElementById('hamburger').addEventListener('click', function() {
+    this.classList.toggle('open');
+    document.getElementById('mobile-menu').classList.toggle('open');
+  });
+
+  function closeMobile() {
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('mobile-menu').classList.remove('open');
+  }
+
+  // ──────────────────────────────────────────────
+  // LOG WORKOUT — SAVE
+  // ──────────────────────────────────────────────
+
+  function saveWorkout() {
+    const type     = document.getElementById('wtype').value;
+    const date     = document.getElementById('wdate').value;
+    const duration = parseInt(document.getElementById('wduration').value);
+    const calories = parseInt(document.getElementById('wcals').value) || 0;
+    const notes    = document.getElementById('wnotes').value.trim();
+    const msgEl    = document.getElementById('log-msg');
+
+    // Validation
+    if (!date) {
+      msgEl.textContent = '⚠ Please pick a date.';
+      msgEl.className   = 'status-msg status-err';
+      return;
+    }
+    if (isNaN(duration) || duration < 1) {
+      msgEl.textContent = '⚠ Duration must be at least 1 minute.';
+      msgEl.className   = 'status-msg status-err';
+      return;
+    }
+
+    workouts.push({ id: uid(), type, date, duration, calories, notes });
+    workouts.sort((a, b) => b.date.localeCompare(a.date));
+    save();
+    resetLogForm();
+    msgEl.textContent = '✓ Workout saved!';
+    msgEl.className   = 'status-msg status-ok';
+    showToast('Workout saved successfully!');
+    setTimeout(() => { msgEl.textContent = ''; }, 2500);
+  }
+
+  function resetLogForm() {
+    document.getElementById('wtype').selectedIndex = 0;
+    document.getElementById('wdate').value         = todayStr();
+    document.getElementById('wduration').value     = '';
+    document.getElementById('wcals').value         = '';
+    document.getElementById('wnotes').value        = '';
+    document.getElementById('log-msg').textContent = '';
+    editId = null;
+  }
+
+  function cancelEdit() {
+    resetLogForm();
+    document.getElementById('log-page-title').textContent = 'Log a Workout';
+  }
+
+  // ──────────────────────────────────────────────
+  // EDIT / DELETE WORKOUTS
+  // ──────────────────────────────────────────────
+
+  function openEditModal(id) {
+    const w = workouts.find(x => x.id === id);
+    if (!w) return;
+    editId = id;
+    document.getElementById('e-wtype').value    = w.type;
+    document.getElementById('e-wdate').value    = w.date;
+    document.getElementById('e-wduration').value = w.duration;
+    document.getElementById('e-wcals').value    = w.calories || 0;
+    document.getElementById('e-wnotes').value   = w.notes || '';
+    document.getElementById('edit-modal').classList.remove('hidden');
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    editId = null;
+  }
+
+  function saveEdit() {
+    const w = workouts.find(x => x.id === editId);
+    if (!w) return;
+    w.type     = document.getElementById('e-wtype').value;
+    w.date     = document.getElementById('e-wdate').value;
+    w.duration = parseInt(document.getElementById('e-wduration').value) || w.duration;
+    w.calories = parseInt(document.getElementById('e-wcals').value) || 0;
+    w.notes    = document.getElementById('e-wnotes').value.trim();
+    workouts.sort((a, b) => b.date.localeCompare(a.date));
+    save();
+    closeEditModal();
+    renderHistory();
+    renderDashboard();
+    showToast('Workout updated!');
+  }
+
+  function deleteWorkout(id) {
+    if (!confirm('Delete this workout? This cannot be undone.')) return;
+    workouts = workouts.filter(w => w.id !== id);
+    save();
+    renderHistory();
+    renderDashboard();
+    showToast('Workout deleted.');
+  }
+
+  // Close modal if overlay clicked
+  document.getElementById('edit-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
+
+  // ──────────────────────────────────────────────
+  // BUILD LOG ITEM HTML
+  // ──────────────────────────────────────────────
+
+  function logItemHTML(w) {
+    const badgeColor = BADGE_COLOR[w.type] || 'amber';
+    return `
+      <div class="log-item">
+        <div class="log-icon">${ICONS[w.type] || '💪'}</div>
+        <div class="log-info">
+          <div class="log-name">
+            <span class="badge badge-${badgeColor}">${w.type}</span>
+          </div>
+          <div class="log-meta">
+            <span>📅 ${fmtDate(w.date)}</span>
+            <span>⏱ ${w.duration} min</span>
+            <span>🔥 ${w.calories || 0} kcal</span>
+            ${w.notes ? `<span style="color:var(--text-faint);font-style:italic">"${w.notes}"</span>` : ''}
+          </div>
+        </div>
+        <div class="log-actions">
+          <button class="icon-btn edit" onclick="openEditModal('${w.id}')" title="Edit">✏️</button>
+          <button class="icon-btn del"  onclick="deleteWorkout('${w.id}')" title="Delete">🗑</button>
+        </div>
+      </div>`;
+  }
+
+  // ──────────────────────────────────────────────
+  // STREAK CALCULATION
+  // ──────────────────────────────────────────────
+
+  function getStreak() {
+    if (!workouts.length) return 0;
+    const days = [...new Set(workouts.map(w => w.date))].sort((a, b) => b.localeCompare(a));
+    let streak = 0;
+    let cursor = new Date(todayStr() + 'T00:00:00');
+    for (let i = 0; i < days.length; i++) {
+      const d = new Date(days[i] + 'T00:00:00');
+      const diff = Math.round((cursor - d) / 86400000);
+      if (diff === 0 || diff === 1) { streak++; cursor = d; }
+      else break;
+    }
+    return streak;
+  }
+
+  // ──────────────────────────────────────────────
+  // WEEK DATES (Mon–Sun)
+  // ──────────────────────────────────────────────
+
+  function getWeekDates() {
+    const now  = new Date();
+    const dow  = now.getDay(); // 0=Sun
+    const mon  = new Date(now);
+    mon.setDate(now.getDate() - ((dow + 6) % 7));
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }
+
+  // ──────────────────────────────────────────────
+  // RENDER — DASHBOARD
+  // ──────────────────────────────────────────────
+
+  function renderDashboard() {
+    const totalWorkouts = workouts.length;
+    const totalCals     = workouts.reduce((s, w) => s + (w.calories || 0), 0);
+    const totalMins     = workouts.reduce((s, w) => s + w.duration, 0);
+    const streak        = getStreak();
+
+    // Greeting
+    const hour = new Date().getHours();
+    const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('dash-greeting').textContent = `${greet}! Keep pushing forward.`;
+
+    // Metric cards
+    document.getElementById('dash-metrics').innerHTML = `
+      <div class="metric-card">
+        <div class="metric-icon">🏅</div>
+        <div class="metric-label">Workouts</div>
+        <div class="metric-value">${totalWorkouts}</div>
+        <div class="metric-sub">total logged</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🔥</div>
+        <div class="metric-label">Calories</div>
+        <div class="metric-value">${totalCals.toLocaleString()}</div>
+        <div class="metric-sub">kcal burned</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">⏱</div>
+        <div class="metric-label">Time</div>
+        <div class="metric-value">${Math.round(totalMins / 60)}</div>
+        <div class="metric-sub">hours total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🔥</div>
+        <div class="metric-label">Streak</div>
+        <div class="metric-value" style="color:var(--accent)">${streak}</div>
+        <div class="metric-sub">days in a row</div>
+      </div>`;
+
+    // Streak box
+    document.getElementById('streak-num').textContent = streak;
+    document.getElementById('streak-msg').textContent =
+      streak === 0 ? 'Start today!' :
+      streak === 1 ? 'Great start!' :
+      streak < 7   ? 'Keep the momentum!' :
+      streak < 14  ? 'Unstoppable!' : '🔥 On fire!';
+
+    // Last workout
+    const last = workouts[0];
+    document.getElementById('last-workout-msg').textContent =
+      last ? `Last workout: ${fmtDate(last.date)} — ${last.type} (${last.duration} min)` : 'No workouts logged yet.';
+
+    // Week dots
+    const weekDates   = getWeekDates();
+    const todayDate   = todayStr();
+    const workoutDays = new Set(workouts.map(w => w.date));
+    const DAY_NAMES   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    document.getElementById('week-days').innerHTML = weekDates.map((d, i) => {
+      const hasWorkout = workoutDays.has(d);
+      const isToday    = d === todayDate;
+      const cls = [hasWorkout ? 'has' : '', isToday ? 'today' : ''].join(' ');
+      const dateNum = d.slice(8);
+      return `<div class="day-dot ${cls}" title="${d}">
+        <span class="day-name">${DAY_NAMES[i]}</span>
+        <span class="day-num">${dateNum}</span>
+      </div>`;
+    }).join('');
+
+    // Goal progress on dashboard
+    const weekWorkouts = workouts.filter(w => weekDates.includes(w.date));
+    const gpd = document.getElementById('goal-progress-dash');
+    if (!goals.length) {
+      gpd.innerHTML = `<div style="font-size:0.78rem;color:var(--text-faint)">No goals set. Go to the Goals tab!</div>`;
+    } else {
+      gpd.innerHTML = goals.slice(0, 2).map(g => buildGoalBar(g, weekWorkouts)).join('');
+    }
+
+    // Recent workouts (last 5)
+    const recent = workouts.slice(0, 5);
+    document.getElementById('recent-log').innerHTML = recent.length
+      ? recent.map(logItemHTML).join('')
+      : `<div class="empty"><div class="empty-icon">🏁</div><div>No workouts yet.</div><p>Hit "Log Workout" to add your first entry!</p></div>`;
+  }
+
+  // ──────────────────────────────────────────────
+  // RENDER — HISTORY
+  // ──────────────────────────────────────────────
+
+  function renderHistory() {
+    const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+    const filtered = workouts.filter(w =>
+      !q ||
+      w.type.toLowerCase().includes(q) ||
+      (w.notes || '').toLowerCase().includes(q) ||
+      w.date.includes(q)
+    );
+    document.getElementById('history-count').textContent = filtered.length;
+    document.getElementById('history-list').innerHTML = filtered.length
+      ? filtered.map(logItemHTML).join('')
+      : `<div class="empty"><div class="empty-icon">🔍</div><div>No workouts found.</div><p>${q ? 'Try a different search term.' : 'Log your first workout!'}</p></div>`;
+  }
+
+  // ──────────────────────────────────────────────
+  // RENDER — GOALS
+  // ──────────────────────────────────────────────
+
+  function buildGoalBar(g, weekWorkouts) {
+    let current = 0;
+    if (g.unit === 'workouts')  current = weekWorkouts.length;
+    else if (g.unit === 'minutes')  current = weekWorkouts.reduce((s, w) => s + w.duration, 0);
+    else if (g.unit === 'calories') current = weekWorkouts.reduce((s, w) => s + (w.calories || 0), 0);
+    else current = weekWorkouts.length;
+
+    const pct = Math.min(100, Math.round((current / g.target) * 100));
+    const fillClass = pct >= 100 ? 'done' : pct >= 50 ? '' : 'warn';
+
+    return `
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <span class="progress-name">${g.name}</span>
+          <span class="progress-val">${current} / ${g.target} ${g.unit}</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-pct">${pct}% complete this week</div>
+      </div>`;
+  }
+
+  function renderGoals() {
+    const weekDates    = getWeekDates();
+    const weekWorkouts = workouts.filter(w => weekDates.includes(w.date));
+    const list         = document.getElementById('goals-list');
+
+    if (!goals.length) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div>No goals yet.</div><p>Add your first goal below!</p></div>`;
+      return;
+    }
+
+    list.innerHTML = goals.map(g => {
+      let current = 0;
+      if (g.unit === 'workouts')  current = weekWorkouts.length;
+      else if (g.unit === 'minutes')  current = weekWorkouts.reduce((s,w) => s+w.duration, 0);
+      else if (g.unit === 'calories') current = weekWorkouts.reduce((s,w) => s+(w.calories||0), 0);
+      else current = weekWorkouts.length;
+
+      const pct       = Math.min(100, Math.round((current / g.target) * 100));
+      const fillClass = pct >= 100 ? 'done' : pct >= 50 ? '' : 'warn';
+      const doneBadge = pct >= 100 ? '<span class="badge badge-blue">✓ Done!</span>' : '';
+
+      return `
+        <div class="goal-item">
+          <div class="goal-header">
+            <span class="goal-name">${g.name}</span>
+            <div class="goal-right">
+              ${doneBadge}
+              <span class="goal-count">${current}/${g.target} ${g.unit}</span>
+              <button class="icon-btn del" onclick="deleteGoal('${g.id}')" title="Delete goal">🗑</button>
+            </div>
+          </div>
+          <div class="progress-bar" style="height:8px">
+            <div class="progress-fill ${fillClass}" style="width:${pct}%"></div>
+          </div>
+          <div class="progress-pct">${pct}% — resets every Monday</div>
+        </div>`;
+    }).join('');
+  }
+
+  function addGoal() {
+    const name   = document.getElementById('gname').value.trim();
+    const target = parseInt(document.getElementById('gtarget').value);
+    const unit   = document.getElementById('gunit').value.trim() || 'workouts';
+
+    if (!name)           { showToast('Please enter a goal name.'); return; }
+    if (isNaN(target) || target < 1) { showToast('Target must be at least 1.'); return; }
+
+    goals.push({ id: uid(), name, target, unit });
+    save();
+    document.getElementById('gname').value   = '';
+    document.getElementById('gtarget').value = '';
+    document.getElementById('gunit').value   = '';
+    renderGoals();
+    showToast(`Goal "${name}" added!`);
+  }
+
+  function deleteGoal(id) {
+    if (!confirm('Delete this goal?')) return;
+    goals = goals.filter(g => g.id !== id);
+    save();
+    renderGoals();
+    showToast('Goal deleted.');
+  }
+
+  // ──────────────────────────────────────────────
+  // RENDER — PROGRESS CHARTS
+  // ──────────────────────────────────────────────
+
+  function getChartData(tab) {
+    if (tab === 'weekly') {
+      const weekDates = getWeekDates();
+      const labels    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const durData   = weekDates.map(d => workouts.filter(w => w.date === d).reduce((s, w) => s + w.duration, 0));
+      const calData   = weekDates.map(d => workouts.filter(w => w.date === d).reduce((s, w) => s + (w.calories||0), 0));
+      return { labels, durData, calData };
+    }
+
+    if (tab === 'monthly') {
+      const now   = new Date();
+      const year  = now.getFullYear();
+      const month = now.getMonth();
+      const weeks = [0,1,2,3,4].map(i => ({ label:`Week ${i+1}`, dur:0, cal:0 }));
+      workouts
+        .filter(w => { const d = new Date(w.date + 'T00:00:00'); return d.getFullYear() === year && d.getMonth() === month; })
+        .forEach(w => {
+          const d  = new Date(w.date + 'T00:00:00');
+          const wk = Math.min(4, Math.floor((d.getDate() - 1) / 7));
+          weeks[wk].dur += w.duration;
+          weeks[wk].cal += (w.calories || 0);
+        });
+      return { labels: weeks.map(x => x.label), durData: weeks.map(x => x.dur), calData: weeks.map(x => x.cal) };
+    }
+
+    // All time — last 8 months
+    const months = [];
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ label: d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), y: d.getFullYear(), m: d.getMonth(), dur: 0, cal: 0 });
+    }
+    workouts.forEach(w => {
+      const d = new Date(w.date + 'T00:00:00');
+      const mo = months.find(m => m.y === d.getFullYear() && m.m === d.getMonth());
+      if (mo) { mo.dur += w.duration; mo.cal += (w.calories || 0); }
+    });
+    return { labels: months.map(m => m.label), durData: months.map(m => m.dur), calData: months.map(m => m.cal) };
+  }
+
+  function switchProgressTab(tab, btn) {
+    progTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderProgress();
+  }
+
+  function renderProgress() {
+    const data = getChartData(progTab);
+
+    const durTitle = {
+      weekly:  'Duration per day — this week (minutes)',
+      monthly: 'Duration per week — this month (minutes)',
+      all:     'Duration per month — last 8 months (minutes)',
+    };
+    const calTitle = {
+      weekly:  'Calories burned per day — this week',
+      monthly: 'Calories burned per week — this month',
+      all:     'Calories burned per month — last 8 months',
+    };
+    document.getElementById('dur-chart-title').textContent = durTitle[progTab];
+    document.getElementById('cal-chart-title').textContent = calTitle[progTab];
+
+    const gridColor = 'rgba(255,255,255,0.05)';
+    const tickColor = 'rgba(255,255,255,0.35)';
+
+    const baseOpts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11, family: "'DM Mono', monospace" } } },
+        y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11, family: "'DM Mono', monospace" } }, beginAtZero: true }
+      }
+    };
+
+    // Duration chart
+    if (durChart) durChart.destroy();
+    durChart = new Chart(document.getElementById('durChart'), {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          data: data.durData,
+          backgroundColor: '#3ecf8e',
+          borderRadius: 6,
+          label: 'Minutes'
+        }]
+      },
+      options: baseOpts
+    });
+
+    // Calories chart
+    if (calChart) calChart.destroy();
+    calChart = new Chart(document.getElementById('calChart'), {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: [{
+          data: data.calData,
+          backgroundColor: '#60a5fa',
+          borderRadius: 6,
+          label: 'Calories'
+        }]
+      },
+      options: baseOpts
+    });
+
+    // Activity breakdown doughnut
+    const typeCounts = {};
+    workouts.forEach(w => { typeCounts[w.type] = (typeCounts[w.type] || 0) + 1; });
+    const types  = Object.keys(typeCounts);
+    const counts = types.map(t => typeCounts[t]);
+
+    document.getElementById('pie-legend').innerHTML = types.map((t, i) =>
+      `<div class="legend-item">
+        <div class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></div>
+        ${ICONS[t] || ''} ${t} (${counts[i]})
+      </div>`
+    ).join('');
+
+    if (typeChart) typeChart.destroy();
+    if (!types.length) { document.getElementById('pie-legend').textContent = 'No workout data yet.'; return; }
+    typeChart = new Chart(document.getElementById('typeChart'), {
+      type: 'doughnut',
+      data: {
+        labels: types,
+        datasets: [{
+          data: counts,
+          backgroundColor: CHART_COLORS.slice(0, types.length),
+          borderWidth: 2,
+          borderColor: '#0d0f14',
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    // Personal bests
+    renderPersonalBests();
+  }
+
+  function renderPersonalBests() {
+    if (!workouts.length) {
+      document.getElementById('personal-bests').innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><p>Log workouts to see your bests!</p></div>';
+      return;
+    }
+    const longestRun = workouts.reduce((a, b) => a.duration > b.duration ? a : b);
+    const mostCals   = workouts.reduce((a, b) => (a.calories||0) > (b.calories||0) ? a : b);
+
+    const typeGroups = {};
+    workouts.forEach(w => {
+      if (!typeGroups[w.type] || w.duration > typeGroups[w.type].duration) typeGroups[w.type] = w;
+    });
+
+    document.getElementById('personal-bests').innerHTML = `
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px">Your bests</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg-alt);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:0.82rem;color:var(--text-muted)">🕒 Longest session</span>
+          <span style="font-size:0.85rem;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace">${longestRun.duration} min<br><span style="font-size:0.7rem;color:var(--text-faint)">${longestRun.type}</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg-alt);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:0.82rem;color:var(--text-muted)">🔥 Most calories</span>
+          <span style="font-size:0.85rem;font-weight:600;color:var(--accent2);font-family:'DM Mono',monospace">${mostCals.calories || 0} kcal<br><span style="font-size:0.7rem;color:var(--text-faint)">${mostCals.type}</span></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg-alt);border-radius:var(--radius-sm);border:1px solid var(--border)">
+          <span style="font-size:0.82rem;color:var(--text-muted)">🎯 Favourite type</span>
+          <span style="font-size:0.85rem;font-weight:600;color:var(--warn);font-family:'DM Mono',monospace">${ICONS[Object.keys(typeGroups).sort((a,b)=>typeGroups[b].duration-typeGroups[a].duration)[0]]||''} ${Object.keys(typeGroups).sort((a,b)=>typeGroups[b].duration-typeGroups[a].duration)[0]}</span>
+        </div>
+      </div>`;
+  }
+
+  // ──────────────────────────────────────────────
+  // SEED DEMO DATA (first-time visit)
+  // ──────────────────────────────────────────────
+
+  function seedDemo() {
+    if (workouts.length || goals.length) return;
+
+    const daysAgo = n => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    };
+
+    workouts = [
+      { id: uid(), type: 'Running',      date: daysAgo(0), duration: 35,  calories: 320, notes: 'Morning run' },
+      { id: uid(), type: 'Weightlifting',date: daysAgo(1), duration: 50,  calories: 280, notes: 'Upper body day' },
+      { id: uid(), type: 'Cycling',      date: daysAgo(2), duration: 45,  calories: 350, notes: '' },
+      { id: uid(), type: 'HIIT',         date: daysAgo(3), duration: 25,  calories: 300, notes: 'Tabata circuit' },
+      { id: uid(), type: 'Walking',      date: daysAgo(4), duration: 60,  calories: 200, notes: 'Evening walk' },
+      { id: uid(), type: 'Yoga',         date: daysAgo(5), duration: 40,  calories: 120, notes: 'Rest day yoga' },
+      { id: uid(), type: 'Football',     date: daysAgo(7), duration: 90,  calories: 600, notes: 'Campus match' },
+      { id: uid(), type: 'Running',      date: daysAgo(8), duration: 30,  calories: 270, notes: '' },
+      { id: uid(), type: 'Swimming',     date: daysAgo(9), duration: 45,  calories: 380, notes: 'Laps at the pool' },
+      { id: uid(), type: 'Weightlifting',date: daysAgo(10),duration: 55,  calories: 310, notes: 'Leg day' },
+    ];
+
+    goals = [
+      { id: uid(), name: 'Weekly workouts', target: 5,   unit: 'workouts' },
+      { id: uid(), name: 'Weekly minutes',  target: 150, unit: 'minutes' },
+      { id: uid(), name: 'Weekly calories', target: 1500,unit: 'calories' },
+    ];
+
+    save();
+  }
+
+  // ──────────────────────────────────────────────
+  // INIT
+  // ──────────────────────────────────────────────
+
+  document.getElementById('wdate').value = todayStr();
+  seedDemo();
+  renderDashboard();
+
+  </script>
+</body>
+</html>
